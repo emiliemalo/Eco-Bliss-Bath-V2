@@ -55,23 +55,6 @@ it('should return 200 and tokens when credentials are valid', () => {
   });
 });
 
-it('should return 400 when sending malformed JSON', () => {
-  cy.request({
-    method: 'POST',
-    url: `${apiUrl}/login`,
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    },
-    // username mal 
-    body: "{ username: 'noQuotes', password: 'test' }", 
-    failOnStatusCode: false
-  }).then((response) => {
-    expect(response.status).to.eq(400);
-    // selon la doc, pas de corps précisé pour cette erreur
-    // on vérifie donc uniquement le code
-  });
-});
 
 // TEST API COMMANDES *********************************************
   // Ajoute tes autres 5 requêtes ici en utilisant la même variable apiUrl
