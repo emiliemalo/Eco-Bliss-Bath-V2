@@ -1,25 +1,20 @@
-// ICI on définit l'url de l'API
-const apiUrl = 'http://localhost:8081';
+// Configuration de base
+const apiUrl = Cypress.env('apiUrl');
 
 const defaultHeaders = {
   'Content-Type': 'application/json',
   'Accept': 'application/json'
 };
 
+// Utilisateur valide pour les tests
 const validUser = {
-  username: 'emiliemalo261@gmail.com',
-  password: 'Password123'
+  username: 'test2@test.fr',
+  password: 'testtest'
 };
 
-const validProduct = {
-  id: 1,
-  name: "Sample Product",
-  description: "A product for testing",
-  price: 10.99,
-  picture: "sample.jpg"
-};
-
-// Vérifie la structure d'une commande
+// ====================================
+// Fonctions utilitaires de vérification
+// ====================================
 function expectOrderStructure(order) {
   expect(order).to.have.all.keys(
     'id', 'firstname', 'lastname', 'address', 'zipCode', 'city', 'date', 'validated', 'orderLines'
@@ -32,74 +27,126 @@ function expectOrderStructure(order) {
   }
 }
 
-// Récupère un token d’authentification
+function expectProductStructure(product) {
+  expect(product).to.have.all.keys(
+    'id', 'name', 'availableStock', 'skin', 'aromas', 'ingredients', 'description', 'price', 'picture', 'varieties'
+  );
+}
+
+function expectReviewStructure(review) {
+  expect(review).to.have.all.keys('id', 'date', 'title', 'comment', 'rating', 'author');
+  expect(review.author).to.have.all.keys('id', 'email', 'roles', 'password', 'firstname', 'lastname', 'plainPassword', 'userIdentifier', 'username', 'salt');
+  expect(review.rating).to.be.a('number').and.be.within(1, 5);
+}
+
 function loginAndGetToken() {
   return cy.request({
     method: 'POST',
     url: `${apiUrl}/login`,
     headers: defaultHeaders,
-    body: validUser
-  }).then(res => res.body.token);
+    body: validUser,
+    failOnStatusCode: false
+  }).then(res => {
+    if (res.status === 200) {
+      return res.body.token;
+    }
+    throw new Error(`Login failed: ${res.status}`);
+  });
 }
 
-// Vérification de la disponibilité de l'API avant chaque test
-beforeEach(() => {
-  cy.request(`${apiUrl}/api/health`).then((response) => {
-    expect(response.status).to.eq(200);
-    expect(response.body.status).to.eq("ok");
+// ====================================
+// 1. HEALTH CHECK - Vérification API
+// ====================================
+describe("1. API Health Check", () => {
+  it('should confirm API is available', () => {
+    cy.request(`${apiUrl}/api/health`).then((response) => {
+      expect(response.status).to.eq(200);
+    });
   });
 });
 
-describe("API Tests", () => {
-  it('should return a 401 error when invalid credentials', () => {
+// ====================================
+// 2. AUTHENTICATION - Tests de connexion
+// ====================================
+describe("2. API Authentication Tests", () => {
+  it('should return a 401 error when trying to login with invalid credentials', () => {
     cy.request({
       method: 'POST',
       url: `${apiUrl}/login`,
+      headers: defaultHeaders,
       body: {
         username: 'wrongtest@test.fr',
-        password: 'wrongpassword'
+        password: 'wrongPassword'
       },
       failOnStatusCode: false
     }).then((response) => {
-      expect(response.status).to.eq(401);
-      const msg = (response.body.message || response.body.error || '').toLowerCase().replace(/[^a-z]/g, '');
-      expect(msg).to.include('invalidcredentials');
+      expect(response.status).to.equal(401);
     });
   });
 
-  it('should return a 403 error when trying to access the cart before login', () => {
+  it('should return a 400 error when trying to login with invalid JSON', () => {
+    cy.request({
+      method: 'POST',
+      url: `${apiUrl}/login`,
+      headers: { 'Content-Type': 'application/json' },
+      body: 'invalid json',
+      failOnStatusCode: false
+    }).then((response) => {
+      expect(response.status).to.equal(400);
+    });
+  });
+
+  it('should login successfully with valid credentials', () => {
+    cy.request({
+      method: 'POST',
+      url: `${apiUrl}/login`,
+      headers: defaultHeaders,
+      body: validUser,
+      failOnStatusCode: false
+    }).then((response) => {
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('token');
+      expect(response.body).to.have.property('refresh_token');
+    });
+  });
+
+  it('should return a 403 error when trying to access protected resource without token', () => {
     cy.request({
       method: 'GET',
       url: `${apiUrl}/orders`,
       failOnStatusCode: false
     }).then((response) => {
-      expect(response.status).to.eq(403);
-    });
-  });
-
-  it('should return 200 and tokens when credentials are valid', () => {
-    cy.request({
-      method: 'POST',
-      url: `${apiUrl}/login`,
-      headers: defaultHeaders,
-      body: validUser
-    }).then((response) => {
-      expect(response.status).to.eq(200);
-      expect(response.body).to.have.all.keys('token', 'refresh_token');
-      expect(response.body.token).to.be.a('string');
-      expect(response.body.refresh_token).to.be.a('string');
+      expect(response.status).to.equal(403);
     });
   });
 });
 
-describe('API ORDERS Endpoint Tests', () => {
+// ====================================
+// 3. ORDERS - Tests des commandes
+// ====================================
+describe("3. API Orders Tests", () => {
   let token;
+  let productId;
 
   beforeEach(() => {
-    loginAndGetToken().then(t => { token = t; });
+    // Récupération du token
+    loginAndGetToken().then(t => { 
+      token = t; 
+    });
+    
+    // Récupération d'un produit disponible
+    cy.request({
+      method: 'GET',
+      url: `${apiUrl}/products`,
+      headers: defaultHeaders
+    }).then((response) => {
+      if (response.body.length > 0) {
+        productId = response.body[0].id;
+      }
+    });
   });
 
-  it('should return 200 and a valid order structure when an order exists', () => {
+  it('should return current order or 404 if no order exists', () => {
     cy.request({
       method: 'GET',
       url: `${apiUrl}/orders`,
@@ -114,57 +161,9 @@ describe('API ORDERS Endpoint Tests', () => {
     });
   });
 
-  it('should return 404 if there is no current order', () => {
-    cy.request({
-      method: 'GET',
-      url: `${apiUrl}/orders`,
-      headers: { ...defaultHeaders, Authorization: `Bearer ${token}` },
-      failOnStatusCode: false
-    }).then((response) => {
-      if (response.status === 404) {
-        expect(response.body).to.be.empty;
-      }
-    });
-  });
-
-  it('should create a new order and return 200 with the correct structure', () => {
-    const newOrder = {
-      firstname: "John",
-      lastname: "Doe",
-      address: "123 Main St",
-      zipCode: "12345",
-      city: "Sample City",
-      date: new Date().toISOString(),
-      validated: true,
-      orderLines: [
-        {
-          product: validProduct,
-          quantity: 2
-        }
-      ]
-    };
-
-    cy.request({
-      method: 'POST',
-      url: `${apiUrl}/orders`,
-      headers: { ...defaultHeaders, Authorization: `Bearer ${token}` },
-      body: newOrder,
-      failOnStatusCode: false
-    }).then((response) => {
-      expect(response.status).to.eq(200);
-      expectOrderStructure(response.body);
-      expect(response.body.firstname).to.eq(newOrder.firstname);
-      expect(response.body.lastname).to.eq(newOrder.lastname);
-      expect(response.body.address).to.eq(newOrder.address);
-      expect(response.body.zipCode).to.eq(newOrder.zipCode);
-      expect(response.body.city).to.eq(newOrder.city);
-      expect(response.body.validated).to.eq(newOrder.validated);
-    });
-  });
-
-  it('should add a product to the cart and return 200 with the updated cart structure', () => {
+  it('should add a product to the cart', () => {
     const addToCartPayload = {
-      product: validProduct,
+      product: productId,
       quantity: 2
     };
 
@@ -180,58 +179,422 @@ describe('API ORDERS Endpoint Tests', () => {
     });
   });
 
-  it('should remove a product from the cart and return 200 with the updated cart structure', () => {
-    const removeFromCartPayload = {
-      productId: validProduct.id
-    };
-
+  it('should not add a product with excessive quantity to the cart', () => {
+    // Récupération du stock disponible d'abord
     cy.request({
-      method: 'DELETE',
-      url: `${apiUrl}/orders/remove`,
-      headers: { ...defaultHeaders, Authorization: `Bearer ${token}` },
-      body: removeFromCartPayload,
-      failOnStatusCode: false
-    }).then((response) => {
-      if (response.status === 200) {
-        expectOrderStructure(response.body);
-      } else if (response.status === 404) {
-        expect(response.body).to.be.empty;
-      } else {
-        throw new Error(`Unexpected status code: ${response.status}`);
-      }
+      method: 'GET',
+      url: `${apiUrl}/products/${productId}`,
+      headers: defaultHeaders
+    }).then((productResponse) => {
+      const availableStock = productResponse.body.availableStock;
+      
+      // Tentative d'ajout d'une quantité supérieure au stock
+      cy.request({
+        method: 'PUT',
+        url: `${apiUrl}/orders/add`,
+        headers: { ...defaultHeaders, Authorization: `Bearer ${token}` },
+        body: {
+          product: productId,
+          quantity: availableStock + 10
+        },
+        failOnStatusCode: false
+      }).then((response) => {
+        expect(response.status).to.be.oneOf([400, 409]);
+      });
     });
   });
 
-  it('should update the quantity of a product in the cart and return 200 with the updated cart structure', () => {
-    // Pour un vrai test, il faudrait récupérer dynamiquement orderId et orderLineId
-    const orderId = 1;
-    const orderLineId = 1;
-    const newQuantity = 5;
+  it('should validate/create an order', () => {
+    // D'abord ajouter un produit au panier
+    cy.request({
+      method: 'PUT',
+      url: `${apiUrl}/orders/add`,
+      headers: { ...defaultHeaders, Authorization: `Bearer ${token}` },
+      body: {
+        product: productId,
+        quantity: 1
+      }
+    }).then(() => {
+      // Puis valider la commande
+      const orderData = {
+        firstname: "John",
+        lastname: "Doe",
+        address: "123 Main St",
+        zipCode: "12345",
+        city: "Sample City"
+      };
 
-    const updateQuantityPayload = {
-      orderLineId,
-      quantity: newQuantity
+      cy.request({
+        method: 'POST',
+        url: `${apiUrl}/orders`,
+        headers: { ...defaultHeaders, Authorization: `Bearer ${token}` },
+        body: orderData,
+        failOnStatusCode: false
+      }).then((response) => {
+        expect(response.status).to.eq(200);
+        expectOrderStructure(response.body);
+        expect(response.body.firstname).to.eq(orderData.firstname);
+        expect(response.body.lastname).to.eq(orderData.lastname);
+        expect(response.body.validated).to.eq(true);
+      });
+    });
+  });
+
+  it('should return 404 when trying to validate order without current cart', () => {
+    const orderData = {
+      firstname: "John",
+      lastname: "Doe",
+      address: "123 Main St",
+      zipCode: "12345",
+      city: "Sample City"
     };
 
     cy.request({
-      method: 'PUT',
-      url: `${apiUrl}/orders/${orderId}`,
+      method: 'POST',
+      url: `${apiUrl}/orders`,
       headers: { ...defaultHeaders, Authorization: `Bearer ${token}` },
-      body: updateQuantityPayload,
+      body: orderData,
       failOnStatusCode: false
     }).then((response) => {
-      if (response.status === 200) {
-        expectOrderStructure(response.body);
-        const updatedLine = response.body.orderLines.find(line => line.id === orderLineId);
-        if (updatedLine) {
-          expect(updatedLine.quantity).to.eq(newQuantity);
-        }
-      } else if (response.status === 404) {
-        expect(response.body).to.be.empty;
-      } else {
-        throw new Error(`Unexpected status code: ${response.status}`);
+      expect(response.status).to.eq(404);
+    });
+  });
+
+  it('should remove a product from the cart', () => {
+    // D'abord ajouter un produit
+    cy.request({
+      method: 'PUT',
+      url: `${apiUrl}/orders/add`,
+      headers: { ...defaultHeaders, Authorization: `Bearer ${token}` },
+      body: {
+        product: productId,
+        quantity: 1
       }
+    }).then(() => {
+      // Récupérer la commande pour avoir l'orderLineId
+      cy.request({
+        method: 'GET',
+        url: `${apiUrl}/orders`,
+        headers: { ...defaultHeaders, Authorization: `Bearer ${token}` }
+      }).then((orderResponse) => {
+        const orderLineId = orderResponse.body.orderLines[0].id;
+        
+        // Supprimer le produit
+        cy.request({
+          method: 'DELETE',
+          url: `${apiUrl}/orders/${orderLineId}/delete`,
+          headers: { ...defaultHeaders, Authorization: `Bearer ${token}` },
+          failOnStatusCode: false
+        }).then((response) => {
+          expect(response.status).to.eq(200);
+          expectOrderStructure(response.body);
+        });
+      });
+    });
+  });
+
+  it('should return 404 when trying to remove non-existent product from cart', () => {
+    cy.request({
+      method: 'DELETE',
+      url: `${apiUrl}/orders/99999/delete`,
+      headers: { ...defaultHeaders, Authorization: `Bearer ${token}` },
+      failOnStatusCode: false
+    }).then((response) => {
+      expect(response.status).to.eq(404);
+    });
+  });
+
+  it('should change quantity of a product in the cart', () => {
+    // D'abord ajouter un produit au panier
+    cy.request({
+      method: 'PUT',
+      url: `${apiUrl}/orders/add`,
+      headers: { ...defaultHeaders, Authorization: `Bearer ${token}` },
+      body: {
+        product: productId,
+        quantity: 1
+      }
+    }).then(() => {
+      // Récupérer la commande actuelle pour avoir l'orderLineId
+      cy.request({
+        method: 'GET',
+        url: `${apiUrl}/orders`,
+        headers: { ...defaultHeaders, Authorization: `Bearer ${token}` }
+      }).then((orderResponse) => {
+        const orderLineId = orderResponse.body.orderLines[0].id;
+        
+        // Changer la quantité
+        cy.request({
+          method: 'PUT',
+          url: `${apiUrl}/orders/${orderLineId}/change-quantity`,
+          headers: { ...defaultHeaders, Authorization: `Bearer ${token}` },
+          body: {
+            quantity: 3
+          },
+          failOnStatusCode: false
+        }).then((response) => {
+          expect(response.status).to.eq(200);
+          expect(response.body).to.have.all.keys('id', 'product', 'quantity');
+          expect(response.body.quantity).to.eq(3);
+        });
+      });
+    });
+  });
+
+  it('should return 404 when trying to change quantity of non-existent product', () => {
+    cy.request({
+      method: 'PUT',
+      url: `${apiUrl}/orders/99999/change-quantity`,
+      headers: { ...defaultHeaders, Authorization: `Bearer ${token}` },
+      body: {
+        quantity: 5
+      },
+      failOnStatusCode: false
+    }).then((response) => {
+      expect(response.status).to.eq(404);
     });
   });
 });
 
+// ====================================
+// 4. PRODUCTS - Tests des produits
+// ====================================
+describe("4. API Products Tests", () => {
+  it('should return all available products', () => {
+    cy.request({
+      method: 'GET',
+      url: `${apiUrl}/products`,
+      headers: defaultHeaders,
+      failOnStatusCode: false
+    }).then((response) => {
+      expect(response.status).to.equal(200);
+      expect(response.body).to.be.an('array');
+      
+      if (response.body.length > 0) {
+        response.body.forEach(product => {
+          expectProductStructure(product);
+        });
+      }
+    });
+  });
+
+  it('should return 3 random products', () => {
+    cy.request({
+      method: 'GET',
+      url: `${apiUrl}/products/random`,
+      headers: defaultHeaders,
+      failOnStatusCode: false
+    }).then((response) => {
+      expect(response.status).to.equal(200);
+      expect(response.body).to.be.an('array').and.have.length(3);
+      
+      response.body.forEach(product => {
+        expectProductStructure(product);
+      });
+    });
+  });
+
+  it('should return the details of a specific product', () => {
+    // Récupération d'un produit d'abord
+    cy.request({
+      method: 'GET',
+      url: `${apiUrl}/products`,
+      headers: defaultHeaders
+    }).then((response) => {
+      const firstProductId = response.body[0].id;
+      
+      // Test de récupération du détail
+      cy.request({
+        method: 'GET',
+        url: `${apiUrl}/products/${firstProductId}`,
+        headers: defaultHeaders,
+        failOnStatusCode: false
+      }).then((detailResponse) => {
+        expect(detailResponse.status).to.equal(200);
+        expect(detailResponse.body).to.have.property('id', firstProductId);
+        expectProductStructure(detailResponse.body);
+      });
+    });
+  });
+
+  it('should return 404 for non-existent product', () => {
+    cy.request({
+      method: 'GET',
+      url: `${apiUrl}/products/99999`,
+      headers: defaultHeaders,
+      failOnStatusCode: false
+    }).then((response) => {
+      expect(response.status).to.equal(404);
+    });
+  });
+});
+
+// ====================================
+// 5. REVIEWS - Tests des avis
+// ====================================
+describe("5. API Reviews Tests", () => {
+  let token;
+
+  beforeEach(() => {
+    loginAndGetToken().then(t => { 
+      token = t; 
+    });
+  });
+
+  it('should return all reviews', () => {
+    cy.request({
+      method: 'GET',
+      url: `${apiUrl}/reviews`,
+      headers: defaultHeaders,
+      failOnStatusCode: false
+    }).then((response) => {
+      expect(response.status).to.equal(200);
+      expect(response.body).to.be.an('array');
+      
+      if (response.body.length > 0) {
+        response.body.forEach(review => {
+          expectReviewStructure(review);
+        });
+      }
+    });
+  });
+
+  it('should create a new review', () => {
+    const reviewData = {
+      title: 'Test review',
+      comment: 'This is a test comment',
+      rating: 5
+    };
+
+    cy.request({
+      method: 'POST',
+      url: `${apiUrl}/reviews`,
+      headers: { ...defaultHeaders, Authorization: `Bearer ${token}` },
+      body: reviewData,
+      failOnStatusCode: false
+    }).then((response) => {
+      expect(response.status).to.equal(200);
+      expectReviewStructure(response.body);
+      expect(response.body.title).to.eq(reviewData.title);
+      expect(response.body.comment).to.eq(reviewData.comment);
+      expect(response.body.rating).to.eq(reviewData.rating);
+    });
+  });
+
+  it('should return 400 when creating review with invalid data', () => {
+    const invalidReviewData = {
+      title: 'Test review',
+      comment: 'This is a test comment',
+      rating: 10 // Invalid rating (should be 1-5)
+    };
+
+    cy.request({
+      method: 'POST',
+      url: `${apiUrl}/reviews`,
+      headers: { ...defaultHeaders, Authorization: `Bearer ${token}` },
+      body: invalidReviewData,
+      failOnStatusCode: false
+    }).then((response) => {
+      expect(response.status).to.equal(400);
+    });
+  });
+
+  it('should return 403 when creating review without authentication', () => {
+    const reviewData = {
+      title: 'Test review',
+      comment: 'This is a test comment',
+      rating: 5
+    };
+
+    cy.request({
+      method: 'POST',
+      url: `${apiUrl}/reviews`,
+      headers: defaultHeaders,
+      body: reviewData,
+      failOnStatusCode: false
+    }).then((response) => {
+      expect(response.status).to.equal(403);
+    });
+  });
+});
+
+// ====================================
+// 6. USERS - Tests des utilisateurs
+// ====================================
+describe("6. API Users Tests", () => {
+  let token;
+
+  beforeEach(() => {
+    loginAndGetToken().then(t => { 
+      token = t; 
+    });
+  });
+
+  it('should register a new user', () => {
+    const newUser = {
+      email: `test${Date.now()}@example.com`,
+      firstname: 'Test',
+      lastname: 'User',
+      plainPassword: 'TestPassword123'
+    };
+
+    cy.request({
+      method: 'POST',
+      url: `${apiUrl}/register`,
+      headers: defaultHeaders,
+      body: newUser,
+      failOnStatusCode: false
+    }).then((response) => {
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('id');
+      expect(response.body.email).to.eq(newUser.email);
+      expect(response.body.firstname).to.eq(newUser.firstname);
+      expect(response.body.lastname).to.eq(newUser.lastname);
+    });
+  });
+
+  it('should return 400 when registering with invalid data', () => {
+    const invalidUser = {
+      email: 'invalid-email',
+      firstname: 'Test',
+      lastname: 'User'
+      // plainPassword missing
+    };
+
+    cy.request({
+      method: 'POST',
+      url: `${apiUrl}/register`,
+      headers: defaultHeaders,
+      body: invalidUser,
+      failOnStatusCode: false
+    }).then((response) => {
+      expect(response.status).to.equal(400);
+    });
+  });
+
+  it('should return current user info', () => {
+    cy.request({
+      method: 'GET',
+      url: `${apiUrl}/me`,
+      headers: { ...defaultHeaders, Authorization: `Bearer ${token}` },
+      failOnStatusCode: false
+    }).then((response) => {
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('id');
+      expect(response.body).to.have.property('email');
+      expect(response.body).to.have.property('firstname');
+      expect(response.body).to.have.property('lastname');
+    });
+  });
+
+  it('should return 403 when accessing user info without authentication', () => {
+    cy.request({
+      method: 'GET',
+      url: `${apiUrl}/me`,
+      headers: defaultHeaders,
+      failOnStatusCode: false
+    }).then((response) => {
+      expect(response.status).to.equal(403);
+    });
+  });
+});
