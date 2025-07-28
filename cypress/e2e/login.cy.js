@@ -1,6 +1,6 @@
 // FRONT ***************************
 describe("Login Tests", () => {
-  it('should successfully log in with valid credentials', () => {
+  it.only('should successfully log in with valid credentials', () => {
     cy.visit('/');
     cy.get('[data-cy="nav-link-login"]', { timeout: 10000 }).should('be.visible').click();
     cy.get('[data-cy="login-input-username"]').type('test2@test.fr');
