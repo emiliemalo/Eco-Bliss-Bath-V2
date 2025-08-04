@@ -18,8 +18,8 @@ describe('Smoke Tests', () => {
   it('should display add to cart buttons when logged in', () => {
     // Se connecter
     cy.get('[data-cy="nav-link-login"]').click();
-    cy.get('[data-cy="login-input-username"]').type('test2@test.fr');
-    cy.get('[data-cy="login-input-password"]').type('testtest');
+    cy.get('[data-cy="login-input-username"]').type(users.validUser.username);
+    cy.get('[data-cy="login-input-password"]').type(users.validUser.password);
     cy.get('[data-cy="login-submit"]').click();
 
     // Vérifier le bouton du panier

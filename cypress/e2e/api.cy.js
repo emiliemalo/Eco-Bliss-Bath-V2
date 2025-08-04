@@ -6,11 +6,14 @@ const defaultHeaders = {
   'Accept': 'application/json'
 };
 
-// Utilisateur valide pour les tests
-const validUser = {
-  username: 'test2@test.fr',
-  password: 'testtest'
-};
+// Import des données utilisateur
+let users;
+
+before(() => {
+  cy.fixture('users.json').then((data) => {
+    users = data;
+  });
+});
 
 // ====================================
 // Fonctions utilitaires de vérification
@@ -44,7 +47,7 @@ function loginAndGetToken() {
     method: 'POST',
     url: `${apiUrl}/login`,
     headers: defaultHeaders,
-    body: validUser,
+    body: users.validUser,
     failOnStatusCode: false
   }).then(res => {
     if (res.status === 200) {
@@ -74,10 +77,7 @@ describe("2. API Authentication Tests", () => {
       method: 'POST',
       url: `${apiUrl}/login`,
       headers: defaultHeaders,
-      body: {
-        username: 'wrongtest@test.fr',
-        password: 'wrongPassword'
-      },
+      body: users.invalidUser,
       failOnStatusCode: false
     }).then((response) => {
       expect(response.status).to.equal(401);

@@ -1,10 +1,18 @@
 // FRONT ***************************
 describe("Login Tests", () => {
+  let users;
+
+  before(() => {
+    cy.fixture('users.json').then((data) => {
+      users = data;
+    });
+  });
+
   it.only('should successfully log in with valid credentials', () => {
     cy.visit('/');
     cy.get('[data-cy="nav-link-login"]', { timeout: 10000 }).should('be.visible').click();
-    cy.get('[data-cy="login-input-username"]').type('test2@test.fr');
-    cy.get('[data-cy="login-input-password"]').type('testtest');
+    cy.get('[data-cy="login-input-username"]').type(users.validUser.username);
+    cy.get('[data-cy="login-input-password"]').type(users.validUser.password);
     cy.get('[data-cy="login-submit"]').click();
     cy.get('[data-cy="nav-link-cart"]').should('be.visible');
   });
@@ -30,10 +38,7 @@ describe("API Login Endpoint Tests", () => {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: {
-        username: 'test2@test.fr',
-        password: 'testtest'
-      }
+      body: users.validUser
     }).then((response) => {
       expect(response.status).to.eq(200);
       expect(response.body).to.have.key('token');
@@ -64,10 +69,7 @@ describe("API Login Endpoint Tests", () => {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: {
-        username: 'wronguser@test.fr',
-        password: 'wrongpassword'
-      },
+      body: users.invalidUser,
       failOnStatusCode: false
     }).then((response) => {
       expect(response.status).to.eq(401);

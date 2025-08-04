@@ -1,0 +1,18 @@
+
+
+
+{
+  "validUser": {
+    "username": "test2@test.fr",
+    "password": "testtest"
+  },
+  "invalidUser": {
+    "username": "wrongtest@test.fr",
+    "password": "wrongPassword"
+  },
+  "newUser": {
+    "firstname": "Test",
+    "lastname": "User",
+    "plainPassword": "TestPassword123"
+  }
+}
