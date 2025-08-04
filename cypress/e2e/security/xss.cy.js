@@ -1,11 +1,19 @@
-describe('Test Simple de Faille XSS', () => {
-  // Données de test basiques
+describe('Test de Sécurité XSS', () => {
+  let users;
+
+  before(() => {
+    cy.fixture('users.json').then((data) => {
+      users = data;
+    });
+  });
+
+  // Scripts à tester pour les failles XSS
   const testScripts = [
-    // Script simple avec alert
+    // Test 1: Script simple
     '<script>alert("xss")</script>',
-    // Injection dans une balise img
+    // Test 2: Balise img malveillante
     '<img src="x" onerror="alert(\'xss\')">',
-    // Script dans un lien
+    // Test 3: Lien malveillant
     '<a href="javascript:alert(\'xss\')">cliquez-moi</a>'
   ];
 
