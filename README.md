@@ -21,9 +21,6 @@ En tant que QA Engineer, ma mission a été de mettre en place une suite de test
 * **Docker & Docker Compose** - Containerisation des services
 * **MySQL/MariaDB** - Base de données
 
-## 📊 Rapport de testing
-
-Pour consulter le rapport de testing, incluant le bilan de la campagne de validation et les recommandations, veuillez cliquer ici : [Rapport de testing (PDF)](lien-vers-rapport)
 
 ## 🚀 Installation et configuration
 
