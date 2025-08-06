@@ -1,4 +1,4 @@
-describe("Tests du Panier", () => {
+describe("Smoke test Panier", () => {
   let users;
 
   before(() => {

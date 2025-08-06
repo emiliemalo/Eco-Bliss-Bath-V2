@@ -1,4 +1,4 @@
-describe("Tests Frontend de Connexion", () => {
+describe("Smoke test de Connexion", () => {
   let users;
 
   before(() => {

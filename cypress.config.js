@@ -7,7 +7,7 @@ module.exports = defineConfig({
       apiUrl: 'http://localhost:8081' // URL API
     },
     setupNodeEvents(on, config) {
-      // Tu pourras y ajouter des plugins plus tard
+    
     },
   },
 });
