@@ -13,7 +13,7 @@ En tant que QA Engineer, ma mission a été de mettre en place une suite de test
 *  2 scénarios **fonctionnels métiers critiques** sélectionnés
 * 1 Test de **faille XSS**
 
-## 🛠️ Technologies utilisées
+## Technologies utilisées
 
 * **Cypress** (JavaScript) - Framework de tests E2E
 * **Angular** - Framework frontend
@@ -77,7 +77,7 @@ npm start
 
 Le site sera accessible sur `http://localhost:4200`
 
-## 🧪 Lancement des tests Cypress
+##  Lancement des tests Cypress
 
 ### Installation de Cypress
 
@@ -120,12 +120,7 @@ Eco-Bliss-Bath-V2/
 └── README.md               # Ce fichier
 ```
 
-## 🎯 Bonnes pratiques pour les tests
 
-* Les tests Cypress sont situés dans `cypress/e2e/`
-
-* Les tests API vérifient les codes de retour et la structure des réponses
-  
 
 ## 🔄 Workflow complet d'exécution
 
