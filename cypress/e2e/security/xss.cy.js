@@ -1,8 +1,8 @@
-describe('Test de Sécurité XSS', () => {
+describe('XSS Security Test', () => {
   const testScripts = [
     '<script>alert("xss")</script>',
     '<img src="x" onerror="alert(\'xss\')">',
-    '<a href="javascript:alert(\'xss\')">cliquez-moi</a>'
+    '<a href="javascript:alert(\'xss\')">click-me</a>'
   ];
 
   beforeEach(() => {
@@ -11,52 +11,52 @@ describe('Test de Sécurité XSS', () => {
     cy.get('[data-cy="login-input-username"]').type('test2@test.fr');
     cy.get('[data-cy="login-input-password"]').type('testtest');
     cy.get('[data-cy="login-submit"]').click();
-    // Attendre que la connexion soit effectuée
+    // Wait for login to complete
     cy.wait(1000);
-    // Vérifier que l'utilisateur est connecté
+    // Verify the user is logged in
     cy.get('[data-cy="nav-link-logout"]').should('exist');
   });
 
   testScripts.forEach((script, index) => {
-    it(`Test XSS #${index + 1} - Vérification de la sécurité`, () => {
+    it(`XSS Test #${index + 1} - Security verification`, () => {
       cy.visit('http://localhost:4200/#/reviews');
 
       cy.get('[data-cy="review-form"]').within(() => {
         cy.get('[data-cy="review-input-comment"]').type(script);
-        cy.get('[data-cy="review-input-title"]').type('Test XSS');
+        cy.get('[data-cy="review-input-title"]').type('XSS Test');
         cy.get('[data-cy="review-submit"]').click();
       });
 
       cy.get('[data-cy="review-content"]').last().then((comment) => {
-        const contenu = comment.html();
-        expect(contenu).not.to.include('<script>');
-        expect(contenu).not.to.include('<img');
-        expect(contenu).not.to.include('javascript:');
+        const content = comment.html();
+        expect(content).not.to.include('<script>');
+        expect(content).not.to.include('<img');
+        expect(content).not.to.include('javascript:');
       });
 
       cy.on('window:alert', () => {
-        throw new Error('Une alerte a été déclenchée - Faille XSS détectée!');
+        throw new Error('An alert was triggered - XSS vulnerability detected!');
       });
     });
   });
 
-  it('Test avec caractères spéciaux', () => {
+  it('Test with special characters', () => {
     cy.visit('http://localhost:4200/#/reviews');
 
     cy.get('[data-cy="review-form"]').within(() => {
-      const caracteresSpeciaux = '<>"\'&';
-      cy.get('[data-cy="review-input-comment"]').type(caracteresSpeciaux);
-      cy.get('[data-cy="review-input-title"]').type('Caractères spéciaux');
+      const specialChars = '<>"\'&';
+      cy.get('[data-cy="review-input-comment"]').type(specialChars);
+      cy.get('[data-cy="review-input-title"]').type('Special Characters');
       cy.get('[data-cy="review-submit"]').click();
     });
 
     cy.get('[data-cy="review-content"]').last().then((comment) => {
-      const contenu = comment.html();
-      expect(contenu).to.include('&lt;');
-      expect(contenu).to.include('&gt;');
-      expect(contenu).to.include('&quot;');
-      expect(contenu).to.include('&#39;');
-      expect(contenu).to.include('&amp;');
+      const content = comment.html();
+      expect(content).to.include('&lt;');
+      expect(content).to.include('&gt;');
+      expect(content).to.include('&quot;');
+      expect(content).to.include('&#39;');
+      expect(content).to.include('&amp;');
     });
   });
 });

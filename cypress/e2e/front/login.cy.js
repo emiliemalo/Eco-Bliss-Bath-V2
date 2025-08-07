@@ -1,6 +1,4 @@
-
-
-describe("Connexion", () => {
+describe("Login", () => {
   let users;
 
   before(() => {
@@ -9,69 +7,69 @@ describe("Connexion", () => {
     });
   });
 
-  it('devrait se connecter avec succès avec des identifiants valides', () => {
-    // 1. Visiter la page d'accueil
+  it('should successfully log in with valid credentials', () => {
+    // 1. Visit the homepage
     cy.visit('/');
 
-    // 2. Attendre que le bouton de connexion soit visible et cliquer dessus
+    // 2. Wait for the login button to be visible and click it
     cy.get('[data-cy="nav-link-login"]', { timeout: 10000 })
       .should('be.visible')
       .click();
 
-    // 3. Remplir le formulaire de connexion
+    // 3. Fill the login form
     cy.get('[data-cy="login-input-username"]')
       .type(users.validUser.username);
     cy.get('[data-cy="login-input-password"]')
       .type(users.validUser.password);
 
-    // 4. Soumettre le formulaire
+    // 4. Submit the form
     cy.get('[data-cy="login-submit"]').click();
 
-    // 5. Vérifier que la connexion a réussi (le panier devient visible)
+    // 5. Verify that login was successful (the cart becomes visible)
     cy.get('[data-cy="nav-link-cart"]')
       .should('be.visible');
   });
 
-  it('devrait afficher une erreur avec des identifiants invalides', () => {
-    // 1. Visiter la page d'accueil
+  it('should display an error with invalid credentials', () => {
+    // 1. Visit the homepage
     cy.visit('/');
 
-    // 2. Cliquer sur le bouton de connexion
+    // 2. Click on the login button
     cy.get('[data-cy="nav-link-login"]')
       .should('be.visible')
       .click();
 
-    // 3. Remplir le formulaire avec des identifiants invalides
+    // 3. Fill the form with invalid credentials
     cy.get('[data-cy="login-input-username"]')
       .type(users.invalidUser.username);
     cy.get('[data-cy="login-input-password"]')
       .type(users.invalidUser.password);
 
-    // 4. Soumettre le formulaire
+    // 4. Submit the form
     cy.get('[data-cy="login-submit"]').click();
 
-    // 5. Vérifier que le message d'erreur apparaît
+    // 5. Verify that the error message appears
     cy.get('[data-cy="login-errors"]')
       .should('be.visible')
-      .and('contain', 'Identifiants incorrects');
+      .and('contain', 'Incorrect credentials');
   });
 
-  it('devrait empêcher la soumission avec des champs vides', () => {
-    // 1. Visiter la page d'accueil
+  it('should prevent submission with empty fields', () => {
+    // 1. Visit the homepage
     cy.visit('/');
 
-    // 2. Cliquer sur le bouton de connexion
+    // 2. Click on the login button
     cy.get('[data-cy="nav-link-login"]')
       .should('be.visible')
       .click();
 
-    // 3. Soumettre le formulaire sans remplir les champs
+    // 3. Submit the form without filling fields
     cy.get('[data-cy="login-submit"]').click();
 
-    // 4. Vérifier que le message d'erreur apparaît après submit
+    // 4. Verify that the error message appears after submit
     cy.get('[data-cy="login-errors"]')
       .should('be.visible')
-      .and('contain', 'Merci de remplir correctement tous les champs');
+      .and('contain', 'Please fill out all fields correctly');
   });
 
 });
