@@ -51,7 +51,7 @@ describe("Login", () => {
     // 5. Verify that the error message appears
     cy.get('[data-cy="login-errors"]')
       .should('be.visible')
-      .and('contain', 'Incorrect credentials');
+      .and('contain', 'Identifiants incorrects');
   });
 
   it('should prevent submission with empty fields', () => {
@@ -69,7 +69,7 @@ describe("Login", () => {
     // 4. Verify that the error message appears after submit
     cy.get('[data-cy="login-errors"]')
       .should('be.visible')
-      .and('contain', 'Please fill out all fields correctly');
+      .and('contain', 'Merci de remplir correctement tous les champs');
   });
 
 });
