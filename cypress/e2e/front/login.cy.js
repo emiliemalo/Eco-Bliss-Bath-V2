@@ -1,4 +1,6 @@
-describe("Smoke test de Connexion", () => {
+
+
+describe("Connexion", () => {
   let users;
 
   before(() => {
@@ -49,9 +51,9 @@ describe("Smoke test de Connexion", () => {
     cy.get('[data-cy="login-submit"]').click();
 
     // 5. Vérifier que le message d'erreur apparaît
-    cy.get('[data-cy="login-error"]')
+    cy.get('[data-cy="login-errors"]')
       .should('be.visible')
-      .and('contain', 'Identifiants invalides');
+      .and('contain', 'Identifiants incorrects');
   });
 
   it('devrait empêcher la soumission avec des champs vides', () => {
@@ -66,10 +68,10 @@ describe("Smoke test de Connexion", () => {
     // 3. Soumettre le formulaire sans remplir les champs
     cy.get('[data-cy="login-submit"]').click();
 
-    // 4. Vérifier que les messages de validation apparaissent
-    cy.get('[data-cy="login-input-username"]:invalid')
-      .should('exist');
-    cy.get('[data-cy="login-input-password"]:invalid')
-      .should('exist');
+    // 4. Vérifier que le message d'erreur apparaît après submit
+    cy.get('[data-cy="login-errors"]')
+      .should('be.visible')
+      .and('contain', 'Merci de remplir correctement tous les champs');
   });
+
 });
