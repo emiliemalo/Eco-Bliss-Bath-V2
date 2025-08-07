@@ -38,3 +38,5 @@ describe('Smoke Tests', () => {
     cy.get('[data-cy="nav-link-cart"]').should('be.visible');
   });
 });
+
+  
