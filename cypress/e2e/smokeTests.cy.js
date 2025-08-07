@@ -15,6 +15,18 @@ describe('Smoke Tests', () => {
   });
 
   // Smoke test 2 : Vérification des boutons d'ajout au panier après connexion
+    let users;
+
+  before(() => {
+    //Récupération du users.json
+    cy.fixture('users.json').then((userData) => {
+      users = userData;
+    });
+  });
+
+  beforeEach(() => {
+    cy.visit('http://localhost:4200/#');
+  });
   it('should display add to cart buttons when logged in', () => {
     // Se connecter
     cy.get('[data-cy="nav-link-login"]').click();
